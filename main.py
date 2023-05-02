@@ -24,15 +24,20 @@ class CurrencyConverter:
             return rates
 
     async def get_rate(self, session, date, currency):
-        try:
-            async with session.get(f'{self.url}{date}') as response:
-                response_json = await response.json()
-                for rate in response_json['exchangeRate']:
-                    if rate['currency'] == currency:
-                        return {date: {currency: {'sale': rate['saleRate'], 'purchase': rate['purchaseRate']}}}
-        except Exception as e:
-            print(f'Error getting rate for {currency} on {date}: {e}')
-            return {'date': date, 'currency': currency, 'rate': None}
+        while True:
+            try:
+                async with session.get(f'{self.url}{date}') as response:
+                    if response.status == 429:
+                        await asyncio.sleep(1)
+                        continue
+                    else:
+                        response_json = await response.json()
+                        for rate in response_json['exchangeRate']:
+                            if rate['currency'] == currency:
+                                return {date: {currency: {'sale': rate['saleRate'], 'purchase': rate['purchaseRate']}}}
+            except Exception as e:
+                print(f'Error getting rate for {currency} on {date}: {e}')
+                return {'date': date, 'currency': currency, 'rate': None}
 
 
 async def main():
